@@ -1,0 +1,105 @@
+C51 COMPILER V9.57.0.0   ____                                                              05/02/2020 18:05:32 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE ____
+OBJECT MODULE PLACED IN .\hex\舵机.obj
+COMPILER INVOKED BY: H:\KEIL5-C51\C51\BIN\C51.EXE 舵机.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\舵
+                    -机.lst) OBJECT(.\hex\舵机.obj)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #define uchar unsigned char
+   3          #define uint unsigned int
+   4          uint a,b,c,d;
+   5          sbit p12=P1^2;
+   6          sbit p13=P1^3;
+   7          sbit p37=P3^7;
+   8          sbit led0=P2^7;
+   9          sbit led1=P2^2;
+  10          sbit led2=P2^3;
+  11          void timer0(void) interrupt 1 using 1
+  12          {
+  13   1              led1=!led1;
+  14   1              p12=!p12;
+  15   1              c=20000-c;
+  16   1              TH0=-(c/256);
+  17   1              TL0=-(c%256);
+  18   1              
+  19   1              if( c>=500&&c<=2500 )
+  20   1                      c=a;
+  21   1      
+  22   1        else
+  23   1              c=20000-a;
+  24   1              
+  25   1      }
+  26          void timer1(void) interrupt 3 using 1
+  27          {
+  28   1      
+  29   1              led2=!led2;
+  30   1              p13=!p13;
+  31   1      
+  32   1              d=20000-d;
+  33   1      
+  34   1              TH1=-(d/256);
+  35   1      
+  36   1              TL1=-(d%256);
+  37   1      
+  38   1              if(d>=500&&d<=2500)
+  39   1              d=b;
+  40   1      
+  41   1              else 
+  42   1              d=20000-b;
+  43   1      }
+  44          
+  45          int main()
+  46          {
+  47   1              led0=0;
+  48   1              TMOD=0x11;
+  49   1      
+  50   1        p12=1;
+  51   1      
+  52   1        p13=1;
+  53   1      
+  54   1        a=1500;
+C51 COMPILER V9.57.0.0   ____                                                              05/02/2020 18:05:32 PAGE 2   
+
+  55   1      
+  56   1        b=1500;
+  57   1      
+  58   1        c=a;d=b;
+  59   1      
+  60   1              TH0=-(a/256);
+  61   1              TL0=-(a%256);
+  62   1      
+  63   1              TH1=-(b/256);
+  64   1              TL1=-(b%256);
+  65   1      
+  66   1        EA=1;
+  67   1      
+  68   1        ET0=1;TR0=1;EX0=1;EX1=1;
+  69   1      
+  70   1        ET1=1;TR1=1;
+  71   1      
+  72   1        PX0=0;PX1=0;PT1=1;PT0=1;
+  73   1      
+  74   1              while(1)
+  75   1              {
+  76   2              
+  77   2              }
+  78   1              
+  79   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    239    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      8    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
