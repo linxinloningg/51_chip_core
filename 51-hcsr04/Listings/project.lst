@@ -1,0 +1,169 @@
+C51 COMPILER V9.57.0.0   PROJECT                                                           07/06/2020 21:36:06 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE PROJECT
+OBJECT MODULE PLACED IN .\hex\project.obj
+COMPILER INVOKED BY: H:\KEIL5-C51\C51\BIN\C51.EXE project.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings
+                    -\project.lst) OBJECT(.\hex\project.obj)
+
+line level    source
+
+   1          #include "reg52.h"
+   2          #include "stdio.h"
+   3          sbit led=P2^0;
+   4          sbit TRIG = P1^0; 
+   5          sbit ECHO = P3^2;
+   6          char buf[32];
+   7          int S;
+   8          /************ultrasonic**********/
+   9          void Time0_Init(void);          
+  10          void StartModule(void);
+  11          void Conut(void);
+  12          void ultrasonic_init(void);
+  13          void ultrasonic_distance(void);
+  14          /********************/
+  15          /***********usart**********/
+  16          void senddelay(unsigned long time);
+  17          void sendMes(char *p);
+  18          void initUart(void);
+  19          void sendsingle(char single);
+  20          /*********************/
+  21          /**********delay**********/
+  22          void delay(unsigned char i);
+  23          void delay_10us(unsigned int i);
+  24          void Time0(void) interrupt 1   //空的定时器0服务函数，没有可能会发生不知名的错误
+  25          {
+  26   1      }
+  27          void usart(void) interrupt 4  //与上同理
+  28          {
+  29   1      }
+  30          int main()                    //主函数
+  31          {
+  32   1              initUart();                   //初始化串口
+  33   1              ultrasonic_init();                      //初始化超声波模块
+  34   1              while(1)                                        //不断打印出距离，led提示系统正常运行
+  35   1              {
+  36   2              ultrasonic_distance();
+  37   2              sprintf(buf,"S=%d\r\n",S);
+  38   2              sendMes(buf);           
+  39   2              led=0;
+  40   2              }
+  41   1      }
+  42          /**********ultrasonic**********/
+  43          void Time0_Init(void)                   //定时器0配置函数
+  44          {
+  45   1      TMOD=0x01; 
+  46   1      TH0=0;
+  47   1      TL0=0;
+  48   1      ET0=1; 
+  49   1      TR0=1; 
+  50   1      EA=1; 
+  51   1      }
+  52          void ultrasonic_init(void)              //超声波初始化函数
+  53          {
+  54   1              Time0_Init();
+C51 COMPILER V9.57.0.0   PROJECT                                                           07/06/2020 21:36:06 PAGE 2   
+
+  55   1              TRIG=0;
+  56   1              ECHO=0;
+  57   1      }
+  58          void StartModule(void)                  //开始模块，根据手册得知将TRIG拉高20us左右模块内部即可发�
+             -��8段40khz的8个40khz的方波，自动检测是否有信号返回
+  59           {
+  60   1              TRIG = 1;
+  61   1              delay_10us(2);
+  62   1              TRIG = 0;
+  63   1       }
+  64          void Conut(void)                //计算距离的函数
+  65          {       
+  66   1              unsigned int time;
+  67   1              time=TH0*256+TL0;
+  68   1              TH0=0;
+  69   1              TL0=0;
+  70   1              S=(time*1.7)/100;
+  71   1      }
+  72          void ultrasonic_distance(void)          
+  73          /* 检测是否有信号回来，有则进行计算，有信号返回，通过IO口ECHO输出一个高电�
+             -��，
+  74             高电平持续的时间就是超声波从发射到返回的时间。通过公式计算测试距离=(�
+             -�电平时间*声速(340M/S))/2  */
+  75          {
+  76   1              StartModule();
+  77   1              while(!ECHO);
+  78   1              TR0=1;
+  79   1              while(ECHO);
+  80   1              TR0=0;
+  81   1              Conut();
+  82   1              TH0=0;
+  83   1              TL0=0;
+  84   1              delay(80);
+  85   1      }
+  86          /******************/
+  87          /**********usart**********/
+  88          void senddelay(unsigned long time)              //串口发送消息时的延迟函数
+  89          {                 
+  90   1              int i = 0;
+  91   1              int j = 0;
+  92   1              for(i = 0;i<100;i++)
+  93   1              {
+  94   2                      for(j = 0;j<time;j++);
+  95   2              }
+  96   1      }       
+  97          void initUart(void)                                             //串口初始化函数
+  98          {
+  99   1              EA = 1;
+ 100   1              ES = 1;
+ 101   1              SCON = 0x40;
+ 102   1              TH2 = 0xFF;
+ 103   1              TL2 = 0xFD;
+ 104   1              RCAP2H = 0xFF;
+ 105   1              RCAP2L = 0xFD;
+ 106   1              T2CON = 0x34;
+ 107   1      }
+ 108          void sendMes(char *p)                                   //发送消息函数
+ 109          {
+ 110   1              while(*p!='\0'){
+ 111   2              sendsingle(*p);
+ 112   2              p++;
+ 113   2              } 
+C51 COMPILER V9.57.0.0   PROJECT                                                           07/06/2020 21:36:06 PAGE 3   
+
+ 114   1               senddelay(100);
+ 115   1      }
+ 116          void sendsingle(char single)                    //传递数值函数
+ 117          {               
+ 118   1              SBUF=single;
+ 119   1              while(TI!=1);
+ 120   1              TI=0;
+ 121   1      }
+ 122          /********************/
+ 123          /**********delay**********/
+ 124          void delay(unsigned char i)                             //粗略延时函数
+ 125          {
+ 126   1          while(i--);
+ 127   1      }
+ 128           void delay_10us(unsigned int i)                //i=1时定时大约10us函数，以此类推
+ 129          { 
+ 130   1              unsigned char a,b,c;
+ 131   1              for(c=0;c<i;c++)
+ 132   1              {
+ 133   2                      for(b=1;b>0;b--)
+ 134   2                      {
+ 135   3                              for(a=2;a>0;a--);
+ 136   3                      }
+ 137   2              }
+ 138   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    336    ----
+   CONSTANT SIZE    =      7    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     34       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
