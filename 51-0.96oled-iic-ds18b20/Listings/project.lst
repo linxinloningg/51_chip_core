@@ -1,0 +1,417 @@
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE PROJECT
+OBJECT MODULE PLACED IN .\hex\project.obj
+COMPILER INVOKED BY: H:\KEIL5-C51\C51\BIN\C51.EXE project.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings
+                    -\project.lst) OBJECT(.\hex\project.obj)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include "character.h"
+   3          sbit DQ=P3^6;
+   4          unsigned char temperature;
+   5          unsigned char value;
+   6          sbit SCL=P1^1;
+   7          sbit SDA=P1^0;
+   8          sbit led=P2^7;
+   9          sbit led_time=P2^3;
+  10          /*****************oled*********************/
+  11          void I2cStart(void);
+  12          void I2cStop(void);
+  13          unsigned char I2cSendByte(unsigned char dat);
+  14          void oled_Write_cmd(unsigned char cmd);
+  15          void oled_Write_data(unsigned char dat);
+  16          void oled_clear(void);
+  17          void oled_initial(void);
+  18          void oled_put_char_16x16(unsigned char x,unsigned char y,unsigned char t);
+  19          void oled_display_init(void);
+  20          void oled_display_number(int horizontal,int vertical,int order);
+  21          void oled_display_char(int horizontal,int vertical,int order);
+  22          void delay(unsigned char i);
+  23          void display_temperature(void);
+  24          void display_time(void);
+  25          void dispaly_state(void);
+  26          /******************ds18b20*****************/
+  27          void Init_DS18B20(void);
+  28          unsigned char ReadOneChar(void);
+  29          void WriteOneChar(unsigned char dat);
+  30          void ReadTemperature(void);
+  31          /******************************************/
+  32          void time0_init(void);
+  33          void Delay10us(void);
+  34          int frequency=0;
+  35          unsigned long runtime=0;
+  36          int main()
+  37          {
+  38   1              time0_init();
+  39   1              oled_initial();
+  40   1              oled_display_init();
+  41   1              while(1)
+  42   1              {
+  43   2                      display_temperature();
+  44   2                      display_time();
+  45   2                      dispaly_state();
+  46   2                      led=0;
+  47   2              }
+  48   1      }
+  49          void time0_init(void)
+  50          {
+  51   1      TMOD=0x01; 
+  52   1      TH0=(65536-1000)/256; 
+  53   1      TL0=(65536-1000)%256; 
+  54   1      ET0=1; 
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 2   
+
+  55   1      TR0=1; 
+  56   1      EA=1; 
+  57   1      }
+  58          void Time0(void) interrupt 1 
+  59          {
+  60   1      TH0=(65536-1000)/256; 
+  61   1      TL0=(65536-1000)%256;
+  62   1      frequency++;
+  63   1      while(frequency==1000)
+  64   1      {
+  65   2              runtime++;
+  66   2              led_time=~led_time;
+  67   2              frequency=0;
+  68   2      }
+  69   1      }
+  70          void Delay10us(void)
+  71          {
+  72   1              unsigned char a,b;
+  73   1              for(b=1;b>0;b--)
+  74   1              {
+  75   2              for(a=2;a>0;a--);
+  76   2              }
+  77   1      }
+  78          
+  79          void delay(unsigned char i)
+  80          {
+  81   1          while(i--);
+  82   1      }
+  83          /*start*/
+  84          void I2cStart(void)
+  85          {
+  86   1              SDA=1;
+  87   1              Delay10us();
+  88   1              SCL=1;
+  89   1              Delay10us();//½¨Á¢Ê±¼äÊÇSDA±£³ÖÊ±¼ä>4.7us
+  90   1              SDA=0;
+  91   1              Delay10us();//±£³ÖÊ±¼äÊÇ>4us
+  92   1              SCL=0;                  
+  93   1              Delay10us();            
+  94   1      }
+  95          /*stop*/
+  96          void I2cStop(void)
+  97          {
+  98   1              SDA=0;
+  99   1              Delay10us();
+ 100   1              SCL=1;
+ 101   1              Delay10us();//½¨Á¢Ê±¼ä´óÓÚ4.7us
+ 102   1              SDA=1;
+ 103   1              Delay10us();            
+ 104   1      }
+ 105          unsigned char I2cSendByte(unsigned char dat)
+ 106          {
+ 107   1          unsigned char a=0,b=0;//×î´ó255£¬Ò»¸ö»úÆ÷ÖÜÆÚÎª1us£¬×î´óÑÓÊ±255us¡£         
+ 108   1              for(a=0;a<8;a++)//Òª·¢ËÍ8Î»£¬´Ó×î¸ßÎ»¿ªÊ¼
+ 109   1              {
+ 110   2                      SDA=dat>>7;      //ÆğÊ¼ĞÅºÅÖ®ºóSCL=0£¬ËùÒÔ¿ÉÒÔÖ±½Ó¸Ä±äSDAĞÅºÅ
+ 111   2                      dat=dat<<1;
+ 112   2                      Delay10us();
+ 113   2                      SCL=1;
+ 114   2                      Delay10us();//½¨Á¢Ê±¼ä>4.7us
+ 115   2                      SCL=0;
+ 116   2                      Delay10us();//Ê±¼ä´óÓÚ4us               
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 3   
+
+ 117   2              }
+ 118   1              SDA=1;
+ 119   1              Delay10us();
+ 120   1              SCL=1;
+ 121   1              while(SDA)//µÈ´ıÓ¦´ğ£¬Ò²¾ÍÊÇµÈ´ı´ÓÉè±¸°ÑSDAÀ­µÍ
+ 122   1              {
+ 123   2                      b++;
+ 124   2                      if(b>200)        //Èç¹û³¬¹ı2000usÃ»ÓĞÓ¦´ğ·¢ËÍÊ§°Ü£¬»òÕßÎª·ÇÓ¦´ğ£¬±íÊ¾½ÓÊÕ½áÊø
+ 125   2                      {
+ 126   3                              SCL=0;
+ 127   3                              Delay10us();
+ 128   3                              return 0;
+ 129   3                      }
+ 130   2              }
+ 131   1              SCL=0;
+ 132   1              Delay10us();
+ 133   1              return 1;               
+ 134   1      }
+ 135          
+ 136          void oled_Write_cmd(unsigned char cmd)
+ 137          {
+ 138   1              I2cStart();
+ 139   1              I2cSendByte(0x78);//·¢ËÍĞ´Æ÷¼şµØÖ·
+ 140   1              I2cSendByte(0x00);//·¢ËÍÒªĞ´ÈëÄÚ´æµØÖ·
+ 141   1              I2cSendByte(cmd);       //Ğ´ÈëÃüÁî
+ 142   1              I2cStop();
+ 143   1      }
+ 144          
+ 145          void oled_Write_data(unsigned char dat)
+ 146          {
+ 147   1              I2cStart();
+ 148   1              I2cSendByte(0x78);//·¢ËÍĞ´Æ÷¼şµØÖ·
+ 149   1              I2cSendByte(0x40);//·¢ËÍÒªĞ´ÈëÄÚ´æµØÖ·
+ 150   1              I2cSendByte(dat);       //Ğ´ÈëÊı¾İ
+ 151   1              I2cStop();
+ 152   1      }
+ 153          
+ 154          void oled_clear(void)  //Ò³Ñ°Ö·ÏÂµÄoledÇåÆÁº¯Êı
+ 155          {       unsigned char i,j;
+ 156   1           
+ 157   1              oled_Write_cmd(0x20);
+ 158   1              oled_Write_cmd(0x02);
+ 159   1          for(i=0;i<8;i++)
+ 160   1              {
+ 161   2                      oled_Write_cmd(0xb0+i);
+ 162   2                      oled_Write_cmd(0x00);
+ 163   2                      oled_Write_cmd(0x10);
+ 164   2                      for(j=0;j<128;j++)
+ 165   2                      {
+ 166   3                         oled_Write_data(0x00); 
+ 167   3                      }
+ 168   2      
+ 169   2              }       
+ 170   1      }
+ 171          
+ 172          void oled_initial(void)//oled³õÊ¼»¯º¯Êı
+ 173          {
+ 174   1          delay(500);
+ 175   1                               
+ 176   1              oled_Write_cmd(0xae);//--turn off oled panel ¹Ø±ÕÏÔÊ¾
+ 177   1          oled_Write_cmd(0x00);//---set low column addressÉèÖÃÆğÊ¼ÁĞµÄµÍËÄÎ» 0x0x
+ 178   1          oled_Write_cmd(0x10);//---set high column addressÉèÖÃÆğÊ¼ÁĞµÄ¸ßËÄÎ»0x1x
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 4   
+
+ 179   1          oled_Write_cmd(0x40);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
+ 180   1          oled_Write_cmd(0x81);//--set contrast control registerÉèÖÃ¶Ô±È¶È
+ 181   1          oled_Write_cmd(0xff); // Set SEG Output Current Brightness¶Ô±È¶ÈÎªoxff
+ 182   1          oled_Write_cmd(0xa1);//--Set SEG/Column Mapping     0xa0×óÓÒ·´ÖÃ 0xa1Õı³£
+ 183   1          oled_Write_cmd(0xc8);//Set COM/Row Scan Direction   0xc0ÉÏÏÂ·´ÖÃ 0xc8Õı³£
+ 184   1          oled_Write_cmd(0xa6);//--set normal display
+ 185   1          oled_Write_cmd(0xa8);//--set multiplex ratio(1 to 64)
+ 186   1          oled_Write_cmd(0x3f);//--1/64 duty
+ 187   1          oled_Write_cmd(0xd3);//-set display offset    Shift Mapping RAM Counter (0x00~0x3F)
+ 188   1          oled_Write_cmd(0x00);//-not offset
+ 189   1          oled_Write_cmd(0xd5);//--set display clock divide ratio/oscillator frequency
+ 190   1          oled_Write_cmd(0x80);//--set divide ratio, Set Clock as 100 Frames/Sec
+ 191   1          oled_Write_cmd(0xd9);//--set pre-charge period
+ 192   1          oled_Write_cmd(0xf1);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
+ 193   1          oled_Write_cmd(0xda);//--set com pins hardware configuration
+ 194   1          oled_Write_cmd(0x12);
+ 195   1          oled_Write_cmd(0xdb);//--set vcomh
+ 196   1          oled_Write_cmd(0x40);//Set VCOM Deselect Level
+ 197   1          oled_Write_cmd(0x20);//-Set Page Addressing Mode (0x00/0x01/0x02)ÉèÖÃµØÖ·Ä£Ê½
+ 198   1                                                      //Ë®Æ½Ñ°Ö·£¬´¹Ö±Ñ°Ö·£¬Ò³Ñ°Ö·
+ 199   1          oled_Write_cmd(0x02);//     µØÖ·Ä£Ê½ÎªÒ³Ñ°Ö·
+ 200   1          oled_Write_cmd(0x8d);//--set Charge Pump enable/disable
+ 201   1          oled_Write_cmd(0x14);//--set(0x10) disable
+ 202   1          oled_Write_cmd(0xa4);// Disable Entire Display On (0xa4/0xa5)
+ 203   1          oled_Write_cmd(0xa6);// Disable Inverse Display On (0xa6/a7) 
+ 204   1          oled_Write_cmd(0xaf);//--turn on oled panel¿ªÆôÏÔÊ¾
+ 205   1      
+ 206   1              delay(100);
+ 207   1              oled_clear();//ÇåÆÁ
+ 208   1      }
+ 209          
+ 210          void oled_put_char_16x16(unsigned char x,unsigned char y,unsigned char t)
+ 211                  /*ÉèÖÃÏÔÊ¾×ø±êº¯Êı,tÎª0Ê±£¬×Ö·ûÎª8x16
+ 212                                                  tÎª1Ê±£¬×Ö·ûÎª16x16*/                 
+ 213          {        
+ 214   1           oled_Write_cmd(0x20);
+ 215   1               oled_Write_cmd(0x00);//ÉèÖÃµØÖ·Ä£Ê½ÎªË®Æ½Ñ¡Ö·
+ 216   1           //set page
+ 217   1           oled_Write_cmd(0x22);
+ 218   1               oled_Write_cmd(y*2);
+ 219   1               oled_Write_cmd(0x01+y*2);
+ 220   1      
+ 221   1               //set colum
+ 222   1           oled_Write_cmd(0x21);
+ 223   1               oled_Write_cmd((0x08+0x08*t)*x);
+ 224   1               oled_Write_cmd((0x08+0x08*t)*x+(0x07+0x08*t));
+ 225   1      }
+ 226          void oled_display_char(int horizontal,int vertical,int order)
+ 227          {
+ 228   1              int i;
+ 229   1              oled_put_char_16x16(horizontal,vertical,0);
+ 230   1              for(i=0;i<16;i++)
+ 231   1              {
+ 232   2              oled_Write_data(character[order][i]);
+ 233   2              }
+ 234   1      }
+ 235          void oled_display_number(int horizontal,int vertical,int order)
+ 236          {
+ 237   1              int i;
+ 238   1              oled_put_char_16x16(horizontal,vertical,0);
+ 239   1              for(i=0;i<16;i++)
+ 240   1              {
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 5   
+
+ 241   2              oled_Write_data(number[order][i]);
+ 242   2              }
+ 243   1      }
+ 244          void oled_display_init(void)
+ 245          {
+ 246   1              /*cpu:*/
+ 247   1              oled_display_char(0,0,34);
+ 248   1              oled_display_char(2,0,47);
+ 249   1              oled_display_char(4,0,52);
+ 250   1              oled_display_char(6,0,25);
+ 251   1              /*time:*/
+ 252   1              oled_display_char(0,1,51);
+ 253   1              oled_display_char(1,1,40);
+ 254   1              oled_display_char(2,1,44);
+ 255   1              oled_display_char(3,1,36);
+ 256   1              oled_display_char(4,1,25);
+ 257   1              /*status:*/
+ 258   1              oled_display_char(0,2,50);
+ 259   1              oled_display_char(1,2,51);
+ 260   1              oled_display_char(2,2,32);
+ 261   1              oled_display_char(3,2,51);
+ 262   1              oled_display_char(4,2,36);
+ 263   1              oled_display_char(5,2,25);
+ 264   1      }
+ 265          void display_time(void)
+ 266          {
+ 267   1              int hour,minute,second;
+ 268   1              hour=runtime/3600;
+ 269   1              minute=runtime%3600/60;
+ 270   1              second=runtime%60;
+ 271   1              oled_display_number(6,1,(hour/10));
+ 272   1              oled_display_number(7,1,(hour%10));
+ 273   1              oled_display_char(8,1,71);
+ 274   1              oled_display_number(9,1,(minute/10));
+ 275   1              oled_display_number(10,1,(minute%10));
+ 276   1              oled_display_char(11,1,76);
+ 277   1              oled_display_number(12,1,(second/10));
+ 278   1              oled_display_number(13,1,(second%10));
+ 279   1              oled_display_char(14,1,82);
+ 280   1      }
+ 281          void display_temperature(void)
+ 282          {
+ 283   1              ReadTemperature();
+ 284   1              oled_display_number(7,0,(value/10));
+ 285   1              oled_display_number(9,0,(value%10));
+ 286   1      }
+ 287          /************************************************/
+ 288          void Init_DS18B20(void) 
+ 289          {
+ 290   1              DQ=1;                                   
+ 291   1              delay(8);                               
+ 292   1              DQ=0;                                   
+ 293   1              delay(80);                              
+ 294   1              DQ=1;                                   
+ 295   1              delay(5);
+ 296   1              delay(20);      
+ 297   1      }
+ 298          unsigned char ReadOneChar(void)                         //Ö÷»úÊı¾İÏßÏÈ´Ó¸ßÀ­ÖÁµÍµçÆ½1usÒÔÉÏ£¬ÔÙÊ¹Êı¾İÏßÉıÎª¸ßµçÆ½£¬´Ó¶ø²úÉú¶ÁĞ
+             -ÅºÅ
+ 299          {
+ 300   1              unsigned char i=0;              //Ã¿¸ö¶ÁÖÜÆÚ×î¶ÌµÄ³ÖĞøÊ±¼äÎª60us£¬¸÷¸ö¶ÁÖÜÆÚÖ®¼ä±ØĞëÓĞ1usÒÔÉÏµÄ¸ßµçÆ½»Ö¸´ÆÚ
+ 301   1              unsigned char dat=0; 
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 6   
+
+ 302   1              for (i=8;i>0;i--)               //Ò»¸ö×Ö½ÚÓĞ8Î» 
+ 303   1              {
+ 304   2                      DQ=1; 
+ 305   2                      delay(1); 
+ 306   2                      DQ=0;
+ 307   2                      dat>>=1; 
+ 308   2                      DQ=1; 
+ 309   2                      if(DQ) 
+ 310   2                      dat|=0x80; 
+ 311   2                      delay(4);
+ 312   2              } 
+ 313   1              return(dat);
+ 314   1      }
+ 315          void WriteOneChar(unsigned char dat) 
+ 316          { 
+ 317   1              unsigned char i=0;              //Êı¾İÏß´Ó¸ßµçÆ½À­ÖÁµÍµçÆ½£¬²úÉúĞ´ÆğÊ¼ĞÅºÅ¡£15usÖ®ÄÚ½«ËùĞèĞ´µÄÎ»ËÍµ½Êı¾İÏßÉÏ£¬
+ 318   1              for(i=8;i>0;i--)                //ÔÚ15~60usÖ®¼ä¶ÔÊı¾İÏß½øĞĞ²ÉÑù£¬Èç¹ûÊÇ¸ßµçÆ½¾ÍĞ´1£¬µÍĞ´0·¢Éú¡£ 
+ 319   1              {
+ 320   2                      DQ=0;                           //ÔÚ¿ªÊ¼ÁíÒ»¸öĞ´ÖÜÆÚÇ°±ØĞëÓĞ1usÒÔÉÏµÄ¸ßµçÆ½»Ö¸´ÆÚ¡£ 
+ 321   2                      DQ=dat&0x01; 
+ 322   2                      delay(5); 
+ 323   2                      DQ=1; 
+ 324   2                      dat>>=1;
+ 325   2              } 
+ 326   1              delay(4);
+ 327   1      }
+ 328          void ReadTemperature(void) 
+ 329          {
+ 330   1      unsigned char a;
+ 331   1      unsigned char b;
+ 332   1      Init_DS18B20(); 
+ 333   1      WriteOneChar(0xcc); 
+ 334   1      WriteOneChar(0x44);
+ 335   1      delay(125);
+ 336   1      Init_DS18B20();
+ 337   1      WriteOneChar(0xcc);
+ 338   1      WriteOneChar(0xbe);
+ 339   1      a=ReadOneChar();
+ 340   1      b=ReadOneChar();
+ 341   1      temperature=b;
+ 342   1      temperature=a+(temperature<<8);
+ 343   1              if((temperature&0xf800)==0xf800)
+ 344   1              {
+ 345   2                      temperature=(~temperature)+1;
+ 346   2                      value=temperature*(-0.125);
+ 347   2              }
+ 348   1              else
+ 349   1              {
+ 350   2                      value=temperature*0.125;        
+ 351   2              }       
+ 352   1      }
+ 353          void dispaly_state(void)
+ 354          {
+ 355   1      if(value<=60)
+ 356   1      {
+ 357   2              oled_display_char(6,2,77);
+ 358   2              oled_display_char(7,2,78);
+ 359   2              oled_display_char(8,2,81);
+ 360   2              oled_display_char(9,2,76);
+ 361   2              oled_display_char(10,2,64);
+ 362   2              oled_display_char(11,2,75);
+ 363   2      }
+C51 COMPILER V9.57.0.0   PROJECT                                                           06/26/2020 22:06:10 PAGE 7   
+
+ 364   1      else
+ 365   1      {
+ 366   2              oled_display_char(6,2,78);
+ 367   2              oled_display_char(7,2,85);
+ 368   2              oled_display_char(8,2,68);
+ 369   2              oled_display_char(9,2,81);
+ 370   2              oled_display_char(10,2,71);
+ 371   2              oled_display_char(11,2,68);
+ 372   2              oled_display_char(12,2,64);
+ 373   2              oled_display_char(13,2,83);
+ 374   2              oled_display_char(14,2,68);
+ 375   2              oled_display_char(15,2,67);
+ 376   2      }
+ 377   1      {
+ 378   2              
+ 379   2      }
+ 380   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1614    ----
+   CONSTANT SIZE    =   1680    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      8      17
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

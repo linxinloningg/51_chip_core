@@ -1,0 +1,189 @@
+C51 COMPILER V9.57.0.0   OLED                                                              06/26/2020 12:03:53 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE OLED
+OBJECT MODULE PLACED IN .\hex\oled.obj
+COMPILER INVOKED BY: H:\KEIL5-C51\C51\BIN\C51.EXE APP\oled.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listing
+                    -s\oled.lst) OBJECT(.\hex\oled.obj)
+
+line level    source
+
+   1          #include "oled.h"
+*** WARNING C318 IN LINE 1 OF APP\oled.c: can't open file 'oled.h'
+   2          #include "reg51.h"
+   3          sbit SCL=P2^1;
+   4          sbit SDA=P2^0;
+   5          void Delay10us(void)
+   6          {
+   7   1              unsigned char a,b;
+   8   1              for(b=1;b>0;b--)
+   9   1              {
+  10   2              for(a=2;a>0;a--);
+  11   2              }
+  12   1      }
+  13          
+  14          void delay(unsigned char i)
+  15          {
+  16   1          while(i--);
+  17   1      }
+  18          /*start*/
+  19          void I2cStart(void)
+  20          {
+  21   1              SDA=1;
+  22   1              Delay10us();
+  23   1              SCL=1;
+  24   1              Delay10us();//建立时间是SDA保持时间>4.7us
+  25   1              SDA=0;
+  26   1              Delay10us();//保持时间是>4us
+  27   1              SCL=0;                  
+  28   1              Delay10us();            
+  29   1      }
+  30          /*stop*/
+  31          void I2cStop(void)
+  32          {
+  33   1              SDA=0;
+  34   1              Delay10us();
+  35   1              SCL=1;
+  36   1              Delay10us();//建立时间大于4.7us
+  37   1              SDA=1;
+  38   1              Delay10us();            
+  39   1      }
+  40          unsigned char I2cSendByte(unsigned char dat)
+  41          {
+  42   1          unsigned char a=0,b=0;//最大255，一个机器周期为1us，最大延时255us。         
+  43   1              for(a=0;a<8;a++)//要发送8位，从最高位开始
+  44   1              {
+  45   2                      SDA=dat>>7;      //起始信号之后SCL=0，所以可以直接改变SDA信号
+  46   2                      dat=dat<<1;
+  47   2                      Delay10us();
+  48   2                      SCL=1;
+  49   2                      Delay10us();//建立时间>4.7us
+  50   2                      SCL=0;
+  51   2                      Delay10us();//时间大于4us               
+  52   2              }
+  53   1              SDA=1;
+C51 COMPILER V9.57.0.0   OLED                                                              06/26/2020 12:03:53 PAGE 2   
+
+  54   1              Delay10us();
+  55   1              SCL=1;
+  56   1              while(SDA)//等待应答，也就是等待从设备把SDA拉低
+  57   1              {
+  58   2                      b++;
+  59   2                      if(b>200)        //如果超过2000us没有应答发送失败，或者为非应答，表示接收结束
+  60   2                      {
+  61   3                              SCL=0;
+  62   3                              Delay10us();
+  63   3                              return 0;
+  64   3                      }
+  65   2              }
+  66   1              SCL=0;
+  67   1              Delay10us();
+  68   1              return 1;               
+  69   1      }
+  70          
+  71          void oled_Write_cmd(unsigned char cmd)
+  72          {
+  73   1              I2cStart();
+  74   1              I2cSendByte(0x78);//发送写器件地址
+  75   1              I2cSendByte(0x00);//发送要写入内存地址
+  76   1              I2cSendByte(cmd);       //写入命令
+  77   1              I2cStop();
+  78   1      }
+  79          
+  80          void oled_Write_data(unsigned char dat)
+  81          {
+  82   1              I2cStart();
+  83   1              I2cSendByte(0x78);//发送写器件地址
+  84   1              I2cSendByte(0x40);//发送要写入内存地址
+  85   1              I2cSendByte(dat);       //写入数据
+  86   1              I2cStop();
+  87   1      }
+  88          
+  89          void oled_clear(void)  //页寻址下的oled清屏函数
+  90          {       unsigned char i,j;
+  91   1           
+  92   1              oled_Write_cmd(0x20);
+  93   1              oled_Write_cmd(0x02);
+  94   1          for(i=0;i<8;i++)
+  95   1              {
+  96   2                      oled_Write_cmd(0xb0+i);
+  97   2                      oled_Write_cmd(0x00);
+  98   2                      oled_Write_cmd(0x10);
+  99   2                      for(j=0;j<128;j++)
+ 100   2                      {
+ 101   3                         oled_Write_data(0x00); 
+ 102   3                      }
+ 103   2      
+ 104   2              }       
+ 105   1      }
+ 106          
+ 107          void oled_initial(void)//oled初始化函数
+ 108          {
+ 109   1          delay(500);
+ 110   1                               
+ 111   1              oled_Write_cmd(0xae);//--turn off oled panel 关闭显示
+ 112   1          oled_Write_cmd(0x00);//---set low column address设置起始列的低四位 0x0x
+ 113   1          oled_Write_cmd(0x10);//---set high column address设置起始列的高四位0x1x
+ 114   1          oled_Write_cmd(0x40);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
+ 115   1          oled_Write_cmd(0x81);//--set contrast control register设置对比度
+C51 COMPILER V9.57.0.0   OLED                                                              06/26/2020 12:03:53 PAGE 3   
+
+ 116   1          oled_Write_cmd(0xff); // Set SEG Output Current Brightness对比度为oxff
+ 117   1          oled_Write_cmd(0xa1);//--Set SEG/Column Mapping     0xa0左右反置 0xa1正常
+ 118   1          oled_Write_cmd(0xc8);//Set COM/Row Scan Direction   0xc0上下反置 0xc8正常
+ 119   1          oled_Write_cmd(0xa6);//--set normal display
+ 120   1          oled_Write_cmd(0xa8);//--set multiplex ratio(1 to 64)
+ 121   1          oled_Write_cmd(0x3f);//--1/64 duty
+ 122   1          oled_Write_cmd(0xd3);//-set display offset    Shift Mapping RAM Counter (0x00~0x3F)
+ 123   1          oled_Write_cmd(0x00);//-not offset
+ 124   1          oled_Write_cmd(0xd5);//--set display clock divide ratio/oscillator frequency
+ 125   1          oled_Write_cmd(0x80);//--set divide ratio, Set Clock as 100 Frames/Sec
+ 126   1          oled_Write_cmd(0xd9);//--set pre-charge period
+ 127   1          oled_Write_cmd(0xf1);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
+ 128   1          oled_Write_cmd(0xda);//--set com pins hardware configuration
+ 129   1          oled_Write_cmd(0x12);
+ 130   1          oled_Write_cmd(0xdb);//--set vcomh
+ 131   1          oled_Write_cmd(0x40);//Set VCOM Deselect Level
+ 132   1          oled_Write_cmd(0x20);//-Set Page Addressing Mode (0x00/0x01/0x02)设置地址模式
+ 133   1                                                      //水平寻址，垂直寻址，页寻址
+ 134   1          oled_Write_cmd(0x02);//     地址模式为页寻址
+ 135   1          oled_Write_cmd(0x8d);//--set Charge Pump enable/disable
+ 136   1          oled_Write_cmd(0x14);//--set(0x10) disable
+ 137   1          oled_Write_cmd(0xa4);// Disable Entire Display On (0xa4/0xa5)
+ 138   1          oled_Write_cmd(0xa6);// Disable Inverse Display On (0xa6/a7) 
+ 139   1          oled_Write_cmd(0xaf);//--turn on oled panel开启显示
+ 140   1      
+ 141   1              delay(100);
+ 142   1              oled_clear();//清屏
+ 143   1      }
+ 144          
+ 145          void oled_put_char_16x16(unsigned char x,unsigned char y,unsigned char t)
+ 146                  /*设置显示坐标函数,t为0时，字符为8x16
+ 147                                                  t为1时，字符为16x16*/                 
+ 148          {        
+ 149   1           oled_Write_cmd(0x20);
+ 150   1               oled_Write_cmd(0x00);//设置地址模式为水平选址
+ 151   1           //set page
+ 152   1           oled_Write_cmd(0x22);
+ 153   1               oled_Write_cmd(y*2);
+ 154   1               oled_Write_cmd(0x01+y*2);
+ 155   1      
+ 156   1               //set colum
+ 157   1           oled_Write_cmd(0x21);
+ 158   1               oled_Write_cmd((0x08+0x08*t)*x);
+ 159   1               oled_Write_cmd((0x08+0x08*t)*x+(0x07+0x08*t));
+ 160   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    418    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

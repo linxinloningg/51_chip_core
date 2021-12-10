@@ -1,0 +1,98 @@
+C51 COMPILER V9.57.0.0   ________                                                          05/02/2020 21:10:18 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE ________
+OBJECT MODULE PLACED IN .\hex\¶æ»ú²âÊÔ.obj
+COMPILER INVOKED BY: H:\KEIL5-C51\C51\BIN\C51.EXE ¶æ»ú²âÊÔ.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listing
+                    -s\¶æ»ú²âÊÔ.lst) OBJECT(.\hex\¶æ»ú²âÊÔ.obj)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #define ul unsigned long
+   3          #define uc unsigned char
+   4          #define ui unsigned int
+   5          sbit positive=P1^0;
+   6          sbit negative=P1^1;
+   7          sbit signal=P3^7;
+   8          sbit led0=P2^0;
+   9          sbit led1=P2^7;
+  10          sbit key1=P3^1;
+  11          sbit key2=P3^0;
+  12          sbit key3=P3^2;
+  13          
+  14          void delay(ul t);
+  15          void scanner(ui c);
+  16          int main()
+  17          {
+  18   1              ul t=20000;
+  19   1              ui c=15000;
+  20   1              led0=0;
+  21   1              positive=1;
+  22   1              negative=0;
+  23   1              while(1)
+  24   1              {
+  25   2                      scanner(c);
+  26   2              if(c<=t)
+  27   2              {
+  28   3                      signal=1;
+  29   3                      c+=500;
+  30   3              }
+  31   2              else
+  32   2              {
+  33   3                      signal=0;
+  34   3                      c+=500;
+  35   3              }
+  36   2              while(c>=t)
+  37   2                      c=15000;
+  38   2              }
+  39   1              
+  40   1      }
+  41          void delay(ul t)
+  42          {
+  43   1              while(t--);
+  44   1      }
+  45          void scanner(ui c)
+  46          {
+  47   1              if(key1==0||key2==0||key3==0)
+  48   1                      delay(100);
+  49   1              {
+  50   2                      if(key1==0)
+  51   2                      {
+  52   3                              if(c<=1500)
+  53   3                              {
+  54   4                                      c+=1000;
+C51 COMPILER V9.57.0.0   ________                                                          05/02/2020 21:10:18 PAGE 2   
+
+  55   4                              }
+  56   3                      }
+  57   2                      else if(key2==0)
+  58   2                      {
+  59   3                              if(c>=500)
+  60   3                              {
+  61   4                                      c-=1000;
+  62   4                              }
+  63   3                                      
+  64   3                      }
+  65   2                      else if(key3==0)
+  66   2                      {
+  67   3                              led1=!led1;
+  68   3                      }
+  69   2                              
+  70   2              }
+  71   1      
+  72   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    172    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      10
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
