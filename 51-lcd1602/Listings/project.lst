@@ -1,0 +1,167 @@
+C51 COMPILER V9.57.0.0   PROJECT                                                           07/07/2020 19:02:47 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE PROJECT
+OBJECT MODULE PLACED IN .\hex\project.obj
+COMPILER INVOKED BY: H:\KEIL5-C51\C51\BIN\C51.EXE project.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings
+                    -\project.lst) OBJECT(.\hex\project.obj)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include "string.h"
+   3          sbit SCL=P2^0;
+   4          sbit SDA=P2^1;
+   5          void delay_ms(unsigned int ms);                                                                                                 
+   6          void delay_10us(unsigned int i);
+   7          /**********I2C init***********/
+   8          void I2cStart(void);
+   9          void I2cStop(void);
+  10          unsigned char I2cSendByte(unsigned char dat);
+  11          /********************/
+  12          void lcd_init(void);
+  13          void write_cmd(unsigned char cmd);
+  14          void write_data(unsigned char DData);
+  15          void dispaly(unsigned char X, unsigned char Y, unsigned char DData);
+  16          void dispaly_character(unsigned char X, unsigned char Y, unsigned char* Arry);
+  17          unsigned char code arry[]="successfully!";
+  18          int main()
+  19          {
+  20   1              lcd_init();
+  21   1              while(1)
+  22   1              {
+  23   2              dispaly_character(3,0,arry);            
+  24   2              }
+  25   1      }
+  26          void I2cStart(void)                       
+  27          {
+  28   1              SDA=1;
+  29   1              delay_10us(1);
+  30   1              SCL=1;
+  31   1              delay_10us(1);
+  32   1              SDA=0;
+  33   1              delay_10us(1);
+  34   1              SCL=0;                  
+  35   1              delay_10us(1);          
+  36   1      }
+  37          /*stop*/
+  38          void I2cStop(void)                                              
+  39          {
+  40   1              SDA=0;
+  41   1              delay_10us(1);
+  42   1              SCL=1;
+  43   1              delay_10us(1);
+  44   1              SDA=1;
+  45   1              delay_10us(1);          
+  46   1      }
+  47          unsigned char I2cSendByte(unsigned char dat)            
+  48          {
+  49   1          unsigned char a=0,b=0;
+  50   1              for(a=0;a<8;a++)
+  51   1              {
+  52   2                      SDA=dat>>7;      
+  53   2                      dat=dat<<1;
+  54   2                      delay_10us(1);
+C51 COMPILER V9.57.0.0   PROJECT                                                           07/07/2020 19:02:47 PAGE 2   
+
+  55   2                      SCL=1;
+  56   2                      delay_10us(1);
+  57   2                      SCL=0;
+  58   2                      delay_10us(1);
+  59   2              }
+  60   1              SDA=1;
+  61   1              delay_10us(1);
+  62   1              SCL=1;
+  63   1              while(SDA)
+  64   1              {
+  65   2                      b++;
+  66   2                      if(b>200)        
+  67   2                      {
+  68   3                              SCL=0;
+  69   3                              delay_10us(1);
+  70   3                              return 0;
+  71   3                      }
+  72   2              }
+  73   1              SCL=0;
+  74   1              delay_10us(1);
+  75   1              return 1;               
+  76   1      }
+  77          void delay_ms(unsigned int ms)                
+  78          {
+  79   1              unsigned int i,j;
+  80   1              for(j=0;j<ms;j++)
+  81   1                      for(i=0;i<1000;i++);
+  82   1      }
+  83          void delay_10us(unsigned int i)
+  84          { 
+  85   1              unsigned char a,b,c;
+  86   1              for(c=0;c<i;c++)
+  87   1              {
+  88   2                      for(b=1;b>0;b--)
+  89   2                      {
+  90   3                              for(a=2;a>0;a--);
+  91   3                      }
+  92   2              }
+  93   1      }
+  94          void write_cmd(unsigned char cmd)                
+  95          {       
+  96   1              I2cStart();                                                        
+  97   1              I2cSendByte(0x7c);                                        
+  98   1              I2cSendByte(0x80);                                        
+  99   1              I2cSendByte(cmd);
+ 100   1              I2cStop();                                                               
+ 101   1      }
+ 102          void lcd_init(void)                                        
+ 103          {
+ 104   1              write_cmd(0X38);                                      
+ 105   1              write_cmd(0x0c);                                        
+ 106   1              write_cmd(0x01);                                        
+ 107   1              delay_ms(2);                                                      
+ 108   1      }
+ 109          void dispaly(unsigned char X, unsigned char Y, unsigned char DData)
+ 110          {
+ 111   1              Y&=0x1;
+ 112   1              X&=0xF; 
+ 113   1              if(Y) 
+ 114   1              X|=0x40; 
+ 115   1              X|=0x80;
+ 116   1              write_cmd(X);
+C51 COMPILER V9.57.0.0   PROJECT                                                           07/07/2020 19:02:47 PAGE 3   
+
+ 117   1              write_data(DData);
+ 118   1      }
+ 119          void write_data(unsigned char DData)
+ 120          {
+ 121   1              I2cStart(); 
+ 122   1              I2cSendByte(0x7c);
+ 123   1              I2cSendByte(DData);
+ 124   1              I2cSendByte(0x40);
+ 125   1              I2cSendByte(DData);
+ 126   1              I2cStop();
+ 127   1      }       
+ 128          void dispaly_character(unsigned char X, unsigned char Y, unsigned char* Arry)
+ 129          {
+ 130   1              unsigned int i;
+ 131   1              unsigned int length=strlen(Arry);
+ 132   1              for(i=0;i<length;i++)
+ 133   1              {
+ 134   2              dispaly(X,Y,Arry[i]);
+ 135   2              X++;
+ 136   2              if(X>16)
+ 137   2              {Y+=1;X=0;}     
+ 138   2              }
+ 139   1      }       
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    377    ----
+   CONSTANT SIZE    =     14    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      15
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
